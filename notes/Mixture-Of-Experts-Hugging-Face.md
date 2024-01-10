@@ -9,7 +9,7 @@ Some questions
 3. Why is it only in the FFN? Why can't we throw out 4 diff attention blocks -> Mixture of Attention?
 4. What is a dense model equivalent of a sparse moe model? Is it refering to the active parameter count or the total parameter count?
 
-
+**tl;dr** : MOE is a architectural choice to route observations to subnetworks within a block. This allows us to scale up parameter counts by introducting more experts and hence capabilities of our network. However, this introduces new  challenges due to the higher parameter count to run inference with, training instabilities and inference-time provisioning of experts across devices.
 
 ## Introduction
 
@@ -19,8 +19,6 @@ For a transformer, this means replacing every FFN layer with a MOE layer as seen
 
 ![Mixture Of Expert Layer](../assets/MOE-Block.png)
 
-
-
 Here are some important characteristics of Mixture of Expert networks
 
 - **Sparse**: Not all of the networks weights are connected to one another ( due to experts being seperate sub network that don't share parameters )
@@ -28,6 +26,10 @@ Here are some important characteristics of Mixture of Expert networks
 - **High VRAM**: Since every expert must be loaded into memory for the model to run an inference step
 - **Difficult to Fine-Tune**: These models seem to overfit quite easily so fine-tuning them for specific tasks has been difficult.
 - **Challenging to Optimize**: Complex to perform - if we load balance requests to the wrong expert due to the appropriate expert being overwhelmed, then quality of response degrades. Possibility of wasted capacity if specific experts are also never activated.
+
+We can see that the sparse models also show consistent performance increases when parameter counts are scaled in the Switch Transformer Paper
+
+![MOE Scaling](../assets/MOE%20Eval.png)
 
 ## Architecture
 
@@ -60,6 +62,11 @@ Note that we want to make sure each expert has a roughly equal distribution of t
 - Experts can be overwhelmed if they keep getting chosen to proccess tokens
 - Experts will not learn if they never recieve tokens to proccess
 
+Other methods that have been proposed includes 
+
+- Expert Choice by Zhou et Al ( 2022 ): Allow experts to select the top t tokens from each sequence and then process it
+- Soft mixtures of experts by Puigcerver et Al : In this model, experts act on *sequences* not tokens: each expert processes a weighted combination of all of the tokens in the input sequence.
+
 #### Loss Functions
 
 There are two main loss functions which we use when training a MOE network
@@ -67,7 +74,7 @@ There are two main loss functions which we use when training a MOE network
 1. Auxilliary Loss : Encourage each expert to have equal important and an equal number of training examples
 2. Z-Loss : Penalize large logits entering the softmax function, therefore reducing potential routing errors
 
-
+The reason why we want to penalise large logits is because of the issues with rounding errors in the routers. Switch Transformers experiment with casting different parameters to different datatypes in order to deal with this more efficiently.
 
 ## Training
 
@@ -81,11 +88,23 @@ Models seem to memorise the training data - hence performing well on knowledge-h
 
 ![CleanShot 2024-01-10 at 20.26.10](/Users/admin/Library/Application Support/CleanShot/media/media_Sg8fySzcDi/CleanShot 2024-01-10 at 20.26.10.png)
 
-However, there seem to be good results with recent attempts at instruction tuining so that might change things!
+However, there seem to be good results with recent attempts at instruction tuining so that might change things. 
+
+### Other Methods
+
+Data also seems to suggest that dropout probabilities within each expert has a moderate, more positive effect. Other interesting tricks include using up cycling - where we initialise an expert from the weights of the feed forward network.
+
+This seems to speed up the training process by a significant proportion.
 
 ## Inference
 
 it is challenging to run inference for MOE systems because we cannot predict the load on each expert ahead of time. This means that it is a real possibility that we will be unable to process all tokens in the sequence if our expert is unable to cope with the demand. We can however try to optimise the inference process by using some degree of parallelism.
+
+In practice, a small number of experts are always allocated a large share of tokens; others are completely inactive. Machine translation is particularly bad, because there is high temporal correlation: if one sequence makes use of a particular expert, the probability that the next sequence will use that expert is higher.
+
+![MOE Expert Distribution](../assets/MOE%20Expert%20Distribution.png)
+
+There are specific experts here that are used significantly more than the others. Note that we have ~120+ experts so we expect utilisation to be < 0.01 if everything is fairly allocated.
 
 ### Running Things in Parallel
 
@@ -100,9 +119,10 @@ We have the four following ways to achieve parallelism.
 
 ### Other Approaches
 
-1. **Distillation**: Distil our MOE model into a dense equivalent. With this approach, we can keep ~30-40% of the sparsity gains. However, it's unclear what a dense equivalent might mean here? => Not too sure if we're talking Mixtral 8x7b -> mistral 7b OR another model with 49b params for example.
+1. **Distillation**: Distil our MOE model into a dense equivalent. With this approach, we can keep ~30-40% of the sparsity gains.  Fedus et al (2021), for example, compare a sparse mixture of experts model to a dense T5-Base model that is 100 times smaller but is able to preserve the sparsity gains when distilled using a MOE T-5 model
 2. **Modify Routing**: Route full sentences or tasks to an expert so that more information/context can be extracted
 3. **Aggregation of MOE**: Merging the weights of the expert, reducing parameters at inference time.
+4. **Custom Kernels**: Exploring new ways to batch the operations to take advantage of GPU parallelism
 
 FasterMoE (March 2022) analyzes the performance of MoEs in highly efficient distributed systems and analyzes the theoretical limit of different parallelism strategies, as well as techniques to skew expert popularity, fine-grained schedules of communication that reduce latency, and an adjusted topology-aware gate that picks experts based on the lowest latency, leading to a 17x speedup.
 
@@ -118,7 +138,13 @@ Expert Specialization seems to be on the token rather than sequence level
 
 We can see a similar example in the Mixtral MOE paper where they show the following diagrams
 
+![Mixtral MOE Expert Routing](../assets/MOE%20Mixtral%20Tokens.png)
 
+![Mixtral MOE Expert Routing](../assets/MOE%20Expert%20Choice.png)
+
+> The expected proportion of repetitions in the case of random assignments is 1/8 = 12.5% for “First choice. Repetitions at the first layer are close to random, but are significantly higher at layers 15 and 31. The high number of repetitions shows that expert choice exhibits high temporal locality at these layers.
+>
+> Mistral Paper
 
 ## Examples
 
@@ -160,3 +186,12 @@ MixtralForCausalLM(
 )
 ```
 
+
+
+### Mixtral Bits
+
+Mixtral upsampled the proportion of multilingual dataset when pre-training. This in turn increase the ability of the model to perform well on multilingual benchmarks while mantaining a high accuracy in English.
+
+# Relevant Resources
+
+1. [MOEs by David Lakha](https://blog.javid.io/p/mixtures-of-experts)
