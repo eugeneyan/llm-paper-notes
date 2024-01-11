@@ -2,34 +2,31 @@
 
 > URL : https://huggingface.co/blog/moe
 
-Some questions
-
-1. Why use all FFNs, why not 2 FFNs, one LSTM or a RWKV block? Is there value in having experts all have the same architecture?
-2. Difference between dropout and MOE -> Instead of top-k =2 why not just choose a random k from 1 -> 5 each time? This way we build more resilience in the network
-3. Why is it only in the FFN? Why can't we throw out 4 diff attention blocks -> Mixture of Attention?
-4. What is a dense model equivalent of a sparse moe model? Is it refering to the active parameter count or the total parameter count?
-
-**tl;dr** : MOE is a architectural choice to route observations to subnetworks within a block. This allows us to scale up parameter counts by introducting more experts and hence capabilities of our network. However, this introduces new  challenges due to the higher parameter count to run inference with, training instabilities and inference-time provisioning of experts across devices.
-
 ## Introduction
 
-A Mixture of Experts model involves two main things - training sub networks which eventually specialize certain tokens/tasks and a classifier which learns which sub network to route a token to. This is done by introducing Mixture Of Experts (MOE) layers. We want to train an MOE normally when we want to scale up parameters ( and capabilities ) without increasing the amount of compute required to run the inference step ( in terms of FLOPs ).
+A Mixture of Experts (MOE) model involves two main things - training sub networks which eventually specialize certain tokens/tasks and a Router which learns which sub network to route a token to. For transformers, We implement this using a MOE layer which replaces the traditional FFN component of an attention block. 
 
-For a transformer, this means replacing every FFN layer with a MOE layer as seen before
+Fundamentally, using a MOE model means we are trading VRAM for compute because it allows us to scale up the number of total parameters in our model while keeping the number of active parameters constant. Therefore, the compute to run inference ( in terms of FLOPs ) remains constant.
 
 ![Mixture Of Expert Layer](../assets/MOE-Block.png)
 
 Here are some important characteristics of Mixture of Expert networks
 
 - **Sparse**: Not all of the networks weights are connected to one another ( due to experts being seperate sub network that don't share parameters )
-- **Training**: They can be trained faster because the computational graph is smaller due to lower number of nodes involved in each forward pass. MOE-Mamba reaches the same performance as Mamba in 2.2x less training steps while preserving the inference performance gains of Mamba against the Transformer.
+- **Training**: They can be trained faster because the computational graph is smaller due to lower number of nodes involved in each forward pass. [MOE-Mamba](https://arxiv.org/abs/2401.04081) reaches the same performance as Mamba in 2.2x less training steps while preserving the inference performance gains of Mamba against the Transformer.
 - **High VRAM**: Since every expert must be loaded into memory for the model to run an inference step
 - **Difficult to Fine-Tune**: These models seem to overfit quite easily so fine-tuning them for specific tasks has been difficult.
 - **Challenging to Optimize**: Complex to perform - if we load balance requests to the wrong expert due to the appropriate expert being overwhelmed, then quality of response degrades. Possibility of wasted capacity if specific experts are also never activated.
 
-We can see that the sparse models also show consistent performance increases when parameter counts are scaled in the Switch Transformer Paper
+We can also see that the performance of a MOE network increases as the number of **total** parameters increases. Note here that **total** parameters is not the same as **active** parameters. Total parameters refer to the number of parameters in the MOE model while active parameters only refer to the number of parameters involved in an inference step.
 
-![MOE Scaling](../assets/MOE%20Eval.png)
+![MOE Parameter Scaling Relationship](../assets/MOE%20Scaling%20Law.png)
+
+
+
+MOEs can also be implemented in other architectures, even RNNs and LSTMs.
+
+![MOE RNN](../assets/MOE%20RNN.png)
 
 ## Architecture
 
@@ -37,7 +34,11 @@ The key things to note in a MOE model is going to be the routing mechanism. This
 
 ### Routing
 
-We utilise a learned gate network to determine the specific expert to send the input to
+> Most networks tend to set k = 2, which means that we combine the outputs of at most 2 experts. Some infrastructure providers such as Fireworks have chosen to provide k=3 mixtral in certain cases. 
+>
+> Fundamentally, this is a hyper-parameter that needs to be tuned. There are diminishing gains and latency trade-offs that will arise as we increase the number of experts. This is a topic of active study.
+
+We utilise a learned gate network to determine the specific expert to send the token to
 $$
 y = \sum_{i=1}^nG(X)_i E_i(x)
 $$
@@ -84,27 +85,21 @@ Sparse models are going to benefit more from smaller batch sizes and higher lear
 
 Models seem to memorise the training data - hence performing well on knowledge-heavy tasks such as TriviaQA while struggling with reasoning-heavy tasks such as SuperGLUE. 
 
-> Question: What does it mean when a model does worse in smaller tasks but did well in larger tasks? Also, what is the MOE graph supposed to represent?
+![MOE vs Dense Model](../assets/MOE%20vs%20Dense.png)
 
-![CleanShot 2024-01-10 at 20.26.10](/Users/admin/Library/Application Support/CleanShot/media/media_Sg8fySzcDi/CleanShot 2024-01-10 at 20.26.10.png)
+However, when trained on instruction tuned data, we can see that MOEs see an greater increase in performance as compared to their dense counterparts. This can be seen below where we observe a greater increase in the eval score of the MOE model when it is finetuned on single-task instruction data.
 
-However, there seem to be good results with recent attempts at instruction tuining so that might change things. 
+![Instruction Tuning MOEs](../assets/MOE%20Instruction%20Tuning.png)
 
-### Other Methods
-
-Data also seems to suggest that dropout probabilities within each expert has a moderate, more positive effect. Other interesting tricks include using up cycling - where we initialise an expert from the weights of the feed forward network.
+Data also seems to suggest that dropout probabilities within each expert has a moderate, more positive effect. Other interesting tricks include using upcycling - where we initialise an expert from the weights of the feed forward network.
 
 This seems to speed up the training process by a significant proportion.
 
 ## Inference
 
-it is challenging to run inference for MOE systems because we cannot predict the load on each expert ahead of time. This means that it is a real possibility that we will be unable to process all tokens in the sequence if our expert is unable to cope with the demand. We can however try to optimise the inference process by using some degree of parallelism.
+Note that when we are refering to MOE inference, this refers to the inference per token.
 
-In practice, a small number of experts are always allocated a large share of tokens; others are completely inactive. Machine translation is particularly bad, because there is high temporal correlation: if one sequence makes use of a particular expert, the probability that the next sequence will use that expert is higher.
-
-![MOE Expert Distribution](../assets/MOE%20Expert%20Distribution.png)
-
-There are specific experts here that are used significantly more than the others. Note that we have ~120+ experts so we expect utilisation to be < 0.01 if everything is fairly allocated.
+MOE systems are challenging to run inference for because we cannot predict the load on each expert ahead of time. If there are multiple consecutive tokens that are related to each other in the sequence, this will result in an oversubscribed expert. Alternatively, if an expert is never chosen, then we have wasted compute that is just idly waiting for use.
 
 ### Running Things in Parallel
 
@@ -119,14 +114,10 @@ We have the four following ways to achieve parallelism.
 
 ### Other Approaches
 
-1. **Distillation**: Distil our MOE model into a dense equivalent. With this approach, we can keep ~30-40% of the sparsity gains.  Fedus et al (2021), for example, compare a sparse mixture of experts model to a dense T5-Base model that is 100 times smaller but is able to preserve the sparsity gains when distilled using a MOE T-5 model
+1. **Distillation**: Distil our MOE model into a dense equivalent. With this approach, we can keep ~30-40% of the sparsity gains.  Fedus et al (2021), for example, compare a sparse mixture of experts model to a dense T5-Base model that is 100 times smaller but is able to preserve the sparsity gains when distilled using a MOE T-5 model. 
 2. **Modify Routing**: Route full sentences or tasks to an expert so that more information/context can be extracted
 3. **Aggregation of MOE**: Merging the weights of the expert, reducing parameters at inference time.
-4. **Custom Kernels**: Exploring new ways to batch the operations to take advantage of GPU parallelism
-
-FasterMoE (March 2022) analyzes the performance of MoEs in highly efficient distributed systems and analyzes the theoretical limit of different parallelism strategies, as well as techniques to skew expert popularity, fine-grained schedules of communication that reduce latency, and an adjusted topology-aware gate that picks experts based on the lowest latency, leading to a 17x speedup.
-
-Megablocks (Nov 2022) explores efficient sparse pretraining by providing new GPU kernels that can handle the dynamism present in MoEs. Their proposal never drops tokens and maps efficiently to modern hardware, leading to significant speedups. What’s the trick? Traditional MoEs use batched matrix multiplication, which assumes all experts have the same shape and the same number of tokens. In contrast, Megablocks expresses MoE layers as block-sparse operations that can accommodate imbalanced assignment.
+4. **Custom Kernels**: Exploring new ways to batch the operations to take advantage of GPU parallelism. This is explored in Megablocks which expresses MoE layers as block-sparse operations that can accomodate imblaanced assignments in matrix mult ( when experts have diff utilisation )
 
 ## Challenges
 
@@ -142,11 +133,11 @@ We can see a similar example in the Mixtral MOE paper where they show the follow
 
 ![Mixtral MOE Expert Routing](../assets/MOE%20Expert%20Choice.png)
 
-> The expected proportion of repetitions in the case of random assignments is 1/8 = 12.5% for “First choice. Repetitions at the first layer are close to random, but are significantly higher at layers 15 and 31. The high number of repetitions shows that expert choice exhibits high temporal locality at these layers.
->
-> Mistral Paper
+
 
 ## Examples
+
+There are a variety of different MOE models that have recently been developed such as Mixtral 8x7b and Phixtral. 
 
 ### Mixtral 8x7b
 
@@ -192,6 +183,10 @@ MixtralForCausalLM(
 
 Mixtral upsampled the proportion of multilingual dataset when pre-training. This in turn increase the ability of the model to perform well on multilingual benchmarks while mantaining a high accuracy in English.
 
-# Relevant Resources
+# Relevant Resources/Useful Links
 
-1. [MOEs by David Lakha](https://blog.javid.io/p/mixtures-of-experts)
+1. [MOEs by David Lakha](https://blog.javid.io/p/mixtures-of-experts) : Good walkthrough and links to more papers 
+2. [MOE hardware requirements](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1/discussions/3) : Forum page to understand hardware requirements to run an MOE system for inference
+3. [FasterMOE](https://dl.acm.org/doi/10.1145/3503221.3508418) : Explores how to speed up MOE inference by examining a variety of different factors and blockers in normal MOE inference, resulting in a 17x speedup with their suggested changes.
+4. [Upcycling MOEs](https://arxiv.org/abs/2212.05055): Explores how to speed up MOE training by initialising experts from original FFN network weights
+5. [Instruction Tuned MOEs](https://arxiv.org/abs/2305.14705): Using 
