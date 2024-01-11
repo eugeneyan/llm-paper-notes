@@ -1,5 +1,5 @@
 # llm-paper-notes
-Notes from the Latent Space paper club. Follow along or start your own!
+Notes from the [Latent Space paper club](https://www.latent.space/about#§components). Follow along or start your own!
 
 ---
 
