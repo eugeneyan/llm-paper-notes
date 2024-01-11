@@ -85,3 +85,4 @@ Notes from the [Latent Space paper club](https://www.latent.space/about#§compon
 
 41. **[REST^EM; Beyond Human Data: Scaling Self-Training for Problem-Solving with Language Models](https://arxiv.org/abs/2312.06585)**: Synthetic data and a reward function are all you need
 
+42. **[Mixture Of Experts Explained](https://huggingface.co/blog/moe#capacity-factor-and-communication-costs)**: A brief introduction to the challenges, background and advantages to using Mixture Of Expert models
