@@ -110,7 +110,7 @@ We have the four following ways to achieve parallelism.
 - **Model and data parallelism:** we can partition the model and the data across cores. Note that different cores process different batches of data.
 - **Expert parallelism**: experts are placed on different workers. If combined with data parallelism, each core has a different expert and the data is partitioned across all cores
 
-![MOE Parrallelism](../assets/MOE Parallel.png)
+![MOE Parrallelism](../assets/MOE%20Parallel.png)
 
 ### Other Approaches
 
