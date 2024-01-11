@@ -143,7 +143,7 @@ There are a variety of different MOE models that have recently been developed su
 
 Mixtral 8x7b uses a collection of Feed Forward Networks ( 8 Experts with 2 hidden layers ). It doesn't have 8x Mixtral 7Bs
 
-```json
+```
 MixtralForCausalLM(
   (model): MixtralModel(
     (embed_tokens): Embedding(32000, 4096)
@@ -189,4 +189,4 @@ Mixtral upsampled the proportion of multilingual dataset when pre-training. This
 2. [MOE hardware requirements](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1/discussions/3) : Forum page to understand hardware requirements to run an MOE system for inference
 3. [FasterMOE](https://dl.acm.org/doi/10.1145/3503221.3508418) : Explores how to speed up MOE inference by examining a variety of different factors and blockers in normal MOE inference, resulting in a 17x speedup with their suggested changes.
 4. [Upcycling MOEs](https://arxiv.org/abs/2212.05055): Explores how to speed up MOE training by initialising experts from original FFN network weights
-5. [Instruction Tuned MOEs](https://arxiv.org/abs/2305.14705): Using 
+5. [Instruction Tuned MOEs](https://arxiv.org/abs/2305.14705): Using Instruction Tuning and doing some comparisons against a dense model
