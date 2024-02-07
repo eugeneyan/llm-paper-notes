@@ -89,5 +89,7 @@ Notes from the [Latent Space paper club](https://www.latent.space/about#§compon
 
 43. **[Self-Instruct: Aligning Language Models with Self-Generated Instructions](https://arxiv.org/abs/2212.10560)**: ([GitHub Repo](https://discord.com/channels/822583790773862470/1197350122112168006), [LS Discord chat](https://discord.com/channels/822583790773862470/1197350122112168006/1199809444897361970))
 
-44. **[Self-Rewarding Language Models](https://arxiv.org/abs/2401.10020)**: ([GitHub Repo](https://github.com/lucidrains/self-rewarding-lm-pytorch))
+44. **[Pythia: A Suite for Analyzing Large Language Models Across Training and Scaling](https://arxiv.org/abs/2304.01373)**: ([Presentation](https://docs.google.com/presentation/d/1EfNdcpRWqns8DvNIL-1bZdOI5tkbmcoBvMQxoMSbbI4/edit?usp=sharing)) A series of open source LLMs with completely reproducible datasets and checkpoints for LLM research. Novel studies (incl negative results) in memorization, data deduplication and data order, and gender debiasing.
+
+45. **[Self-Rewarding Language Models](https://arxiv.org/abs/2401.10020)**: ([GitHub Repo](https://github.com/lucidrains/self-rewarding-lm-pytorch), [LS Discord Chat](https://discord.com/channels/822583790773862470/1197350122112168006/1204880366993674251)): Instead of training reward models from human preferences, LLMs can be used to provide their own rewards during training (aka WITHOUT distillation from GPT4). Fine-tuning Llama 2 70B on three iterations of our approach yields a model that outperforms many existing systems on the AlpacaEval 2.0 leaderboard, including Claude 2, Gemini Pro, and GPT-4 0613.
 
