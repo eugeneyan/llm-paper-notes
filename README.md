@@ -87,4 +87,7 @@ Notes from the [Latent Space paper club](https://www.latent.space/about#§compon
 
 42. **[Mixture Of Experts Explained](https://huggingface.co/blog/moe#capacity-factor-and-communication-costs)**: MOE is a architectural choice to route observations to subnetworks within a block. This allows us to scale up parameter counts by introducting more experts and hence capabilities of our network. However, this introduces new  challenges due to the higher parameter count to run inference with, training instabilities and inference-time provisioning of experts across devices.
 
-43. **[Self-Instruct: Aligning Language Models with Self-Generated Instructions](https://arxiv.org/abs/2212.10560)**: ([GitHub Repo](https://discord.com/channels/822583790773862470/1197350122112168006), [LS Discord chat](https://discord.com/channels/822583790773862470/1197350122112168006/1199809444897361970)) 
+43. **[Self-Instruct: Aligning Language Models with Self-Generated Instructions](https://arxiv.org/abs/2212.10560)**: ([GitHub Repo](https://discord.com/channels/822583790773862470/1197350122112168006), [LS Discord chat](https://discord.com/channels/822583790773862470/1197350122112168006/1199809444897361970))
+
+44. **[Self-Rewarding Language Models](https://arxiv.org/abs/2401.10020)**: ([GitHub Repo](https://github.com/lucidrains/self-rewarding-lm-pytorch))
+
