@@ -91,6 +91,16 @@ Notes from the [Latent Space paper club](https://www.latent.space/about#§compon
 
 44. **[Pythia: A Suite for Analyzing Large Language Models Across Training and Scaling](https://arxiv.org/abs/2304.01373)**: ([Presentation](https://docs.google.com/presentation/d/1EfNdcpRWqns8DvNIL-1bZdOI5tkbmcoBvMQxoMSbbI4/edit?usp=sharing)) A series of open source LLMs with completely reproducible datasets and checkpoints for LLM research. Novel studies (incl negative results) in memorization, data deduplication and data order, and gender debiasing.
 
-45. **[Self-Rewarding Language Models](https://arxiv.org/abs/2401.10020)**: ([GitHub Repo](https://github.com/lucidrains/self-rewarding-lm-pytorch), [LS Discord Chat](https://discord.com/channels/822583790773862470/1197350122112168006/1204880366993674251)): Instead of training reward models from human preferences, LLMs can be used to provide their own rewards during training (aka WITHOUT distillation from GPT4). Fine-tuning Llama 2 70B on three iterations of our approach yields a model that outperforms many existing systems on the AlpacaEval 2.0 leaderboard, including Claude 2, Gemini Pro, and GPT-4 0613.
+46. **[Self-Rewarding Language Models](https://arxiv.org/abs/2401.10020)**: ([GitHub Repo](https://github.com/lucidrains/self-rewarding-lm-pytorch), [LS Discord Chat](https://discord.com/channels/822583790773862470/1197350122112168006/1204880366993674251)): Instead of training reward models from human preferences, LLMs can be used to provide their own rewards during training (aka WITHOUT distillation from GPT4). Fine-tuning Llama 2 70B on three iterations of our approach yields a model that outperforms many existing systems on the AlpacaEval 2.0 leaderboard, including Claude 2, Gemini Pro, and GPT-4 0613.
 
-46. **[Leveraging Large Language Models for NLG Evaluation: A Survey](https://arxiv.org/pdf/2402.00838.pdf)**: [Slides](https://docs.google.com/presentation/d/17mbqFh8KFgn4SqRiKZmtjDn83N6d_jhqep8oPGbtB50/edit#slide=id.g2b89c4d23f6_0_329), [LS Discord Chat](https://discord.com/channels/822583790773862470/1197350122112168006/1207416409383108659) a survey paper of model and task eval techniques. Includes using Auto-J correlation instead of AlpacaEval which we liked.
+47. **[Building Your Own Product Copilot - Challenges, Opportunities, and Needs](https://arxiv.org/abs/2312.14231)**: Prompt engineering LLMs is NOT all you need.
+
+48. **[Matryoshka Representation Learning](https://arxiv.org/abs/2205.13147)**: Aggregated losses across $2^n$-dim embeddings is all you need.
+
+49. **[Towards Efficient Generative Large Language Model Serving: A Survey from Algorithms to Systems](https://arxiv.org/abs/2312.15234)**: Bigger GPUs is not all you need.
+
+50. **[How to Generate and Use Synthetic Data for Finetuning](https://eugeneyan.com/writing/synthetic/)**: Synthetic data is almost all you need.
+
+51. **[Whisper: Robust Speech Recognition via Large-Scale Weak Supervision](https://arxiv.org/abs/2212.04356)**: 680k hrs of audio and multitask formulated as a sequence is all you need.
+
+52. **[Leveraging Large Language Models for NLG Evaluation: A Survey](https://arxiv.org/pdf/2402.00838.pdf)**: [Slides](https://docs.google.com/presentation/d/17mbqFh8KFgn4SqRiKZmtjDn83N6d_jhqep8oPGbtB50/edit#slide=id.g2b89c4d23f6_0_329), [LS Discord Chat](https://discord.com/channels/822583790773862470/1197350122112168006/1207416409383108659) a survey paper of model and task eval techniques. Includes using Auto-J correlation instead of AlpacaEval which we liked.
